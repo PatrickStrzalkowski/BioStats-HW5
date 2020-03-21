@@ -1,0 +1,108 @@
+---
+title: "Homework 5"
+author: "Patrick Strzalkowski"
+date: "18/03/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(rpart)
+library(rpart.plot)
+
+setwd("~/Laurier/Advanced Biostatistics/Homework 5")
+
+crimedata=read.csv("crimedata.csv")
+```
+
+```{r}
+#Summary of dataset
+summary(crimedata)
+```
+# variables used: ExpenditureYear, StateSize, BelowWage, Education, YouthUnemployment, MatureUnemployment
+
+```{r}
+# Q2
+
+#Building regression tree with training set
+m.rpart <- rpart(CrimeRate ~  ExpenditureYear + StateSize + Education + BelowWage + YouthUnemployment + MatureUnemployment, data = crimedata) 
+
+# Q3
+
+#Print summary of tree
+summary(m.rpart)
+```
+# The variablees that are most important are: ExpenditureYear, BelowWage and StateSize
+
+#Plotting the regression tree
+```{r}
+# Q4
+rpart.plot(m.rpart, digits = 3, fallen.leaves = TRUE,tweak=1.3,)
+```
+# Q 4+5: When the expenditure is less than 77 and the population is less than 23, the crime rate is on average 72.5 and this accounts for a total of 25.5 % of the observations. When the expenditure is less than 77 but the population is greater than 23 than the crime rate is 97.6 on average and this account for 23.4% of the observaitons. When the expenditure is greater than 77 but less than 108, the crime rate is 111 on average, and this account for 27.7% of the observations. Lastly, when the expenditure is greater than 77 and 108, than this accounts for the greatest average crime rate (131) of the highest 23.4% observations.
+
+# 6: four of the six predictor variables were excluded from the regression tree. Only state size and expenditure per year were included. The regression tree is constructed balancing complexity and accuracy. Increasing the number of predictor variables will increase the accuracy but also increase the complexity. The best tree has a high level of accuracy and a low level of complexity. Predictor variables will not be added unless they add significant accuracy. Adding too many variables will cause over fitting, and won't be accurate when compared to other datasets.
+
+```{r}
+#7
+crimedata10 <- read.csv("crimedata10.csv")
+summary(crimedata10)
+```
+
+```{r}
+p.rpart <- predict(m.rpart, crimedata10) #using m.rpart to predict crime in crimedata10
+p.rpart
+
+# 8
+cor(p.rpart, crimedata10["CrimeRate"],method="pearson") # displays the correlation of the prediction
+```
+# The correlation coefficient is 0.585602
+
+```{r}
+# 9 Mean Absolute Error
+MAE <- function(actual, predicted)  {
+  mean(abs(actual - predicted))
+}
+
+MAE(predicted = p.rpart,actual = crimedata10 [["CrimeRate"]])
+```
+#The data range of crimedata10 is 151.7 with a MAE of 25.29, and a pearson's correlation coefficient of 0.586. The model is moderatley accurate at predicting crime rates. It has identified the most important predictor variables, but by only using the two variables it has sacrificed some accuracy for simplicity.
+```{r}
+#10
+crime.data.test=crimedata[["CrimeRate"]]
+
+#Let's save the actual wine qualities from the test dataset into a vector called actual
+actual=crime.data.test
+
+#Here is a custom function that uses two variables, data and indices. The data will be the wine
+#qualities from the test dataset. The indices will be randomly selected when using the boot function
+#below. In essence, the boot function will randomly shuffle the wine quality data and then test 
+#against actual wine quality assignment. The MAE2 function will calculate the mean absolute error
+#each time the data is shuffled.
+MAE2 <- function(data,indices)  {
+  d<-data[indices]
+  return(mean(abs(actual - d)))
+}
+
+#Here we use the boot function to make our random "guesses." It will shuffle the wine quality 
+#data and calculate the mean absolute error using our MAE2 function. The R=1000 means it will
+#do this 1000 times. 
+library(boot)
+guesses=boot(data=crime.data.test, statistic=MAE2, R=1000)
+
+#Now, let's plot a histogram of mean absolute differences from the bootstrap and add a red
+#line for the mean
+{hist(guesses$t)
+abline(v=mean(guesses$t),col="red")}
+mean(guesses$t)
+
+#Is our assignment with our model significantly different from that expected by chance?
+p.value=length(which((guesses$t<25.28952)==T))/1000
+p.value
+```
+# Q 11: The random MAE is 32.65739, which is greater than the model's MAE, meaning that the model is more accurate than random chance
+# Q 12: The MAE from the model is significantly different than random chance, p value = 0.007. Note: These values will be different when knitted due to the randomness of the boot function.
